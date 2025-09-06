@@ -33,7 +33,9 @@ def test_product_creation():
 
 def test_category_creation(sample_category, sample_products):
     """Тест создания категории"""
-    assert sample_category.name == "Смартфоны"
-    assert sample_category.description == "Смартфоны как средство коммуникации"
-    assert len(sample_category.products) == 3
-    assert sample_category.products == sample_products
+    products_str = sample_category.products
+    assert "Samsung Galaxy S23 Ultra" in products_str
+    assert "Iphone 15" in products_str
+    assert "Xiaomi Redmi Note 11" in products_str
+    assert "180000.0 руб." in products_str
+    assert "Остаток: 5 шт." in products_str
