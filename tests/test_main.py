@@ -1,39 +1,98 @@
 import pytest
-
-from src.main import Product, Category
-
-
-@pytest.fixture
-def sample_products():
-    """Фикстура для создания тестовых продуктов"""
-    return [
-        Product(
-            "Samsung Galaxy S23 Ultra", "256GB, Серый цвет, 200MP камера", 180000.0, 5
-        ),
-        Product("Iphone 15", "512GB, Gray space", 210000.0, 8),
-        Product("Xiaomi Redmi Note 11", "1024GB, Синий", 31000.0, 14),
-    ]
+from io import StringIO
+import sys
+from src.main import (
+    BaseProduct,
+    Product,
+    Smartphone,
+    LawnGrass,
+    Category,
+    Order,
+    LoggingMixin,
+    BaseEntity,
+)
 
 
-@pytest.fixture
-def sample_category(sample_products):
-    """Фикстура для создания тестовой категории"""
-    return Category("Смартфоны", "Смартфоны как средство коммуникации", sample_products)
+class TestAbstractBase:
+    def test_base_product_is_abstract(self):
+        """Тест что BaseProduct является абстрактным классом"""
+        with pytest.raises(TypeError):
+            BaseProduct("Test", "Test", 100.0, 5)
+
+    def test_product_inherits_from_base(self):
+        """Тест что Product наследуется от BaseProduct"""
+        assert issubclass(Product, BaseProduct)
+
+    def test_abstract_methods_implementation(self):
+        """Тест что Product реализует все абстрактные методы"""
+        product = Product("Test", "Test", 100.0, 5)
+        assert hasattr(product, "__str__")
+        assert hasattr(product, "__add__")
+        assert hasattr(product, "price")
 
 
-def test_product_creation():
-    """Тест создания продукта"""
-    product = Product("Test Product", "Test Description", 100.0, 10)
+class TestLoggingMixin:
+    def test_logging_on_creation(self, capsys):
+        """Тест логирования при создании объекта"""
+        product = Product("Test Product", "Test Description", 100.0, 5)
+        captured = capsys.readouterr()
+        assert "Создан объект Product" in captured.out
+        assert "name='Test Product'" in captured.out
 
-    assert product.name == "Test Product"
-    assert product.description == "Test Description"
-    assert product.price == 100.0
-    assert product.quantity == 10
+    def test_repr_method(self):
+        """Тест метода __repr__"""
+        product = Product("Test", "Desc", 100.0, 5)
+        repr_str = repr(product)
+        assert "Product" in repr_str
+        assert "name='Test'" in repr_str
 
 
-def test_category_creation(sample_category, sample_products):
-    """Тест создания категории"""
-    assert sample_category.name == "Смартфоны"
-    assert sample_category.description == "Смартфоны как средство коммуникации"
-    assert len(sample_category.products) == 3
-    assert sample_category.products == sample_products
+class TestInheritanceChain:
+    def test_mro_chain(self):
+        """Тест порядка разрешения методов"""
+        mro = Product.__mro__
+        assert LoggingMixin in mro
+        assert BaseProduct in mro
+        assert object in mro
+
+    def test_smartphone_inheritance(self):
+        """Тест цепочки наследования Smartphone"""
+        assert issubclass(Smartphone, Product)
+        assert issubclass(Smartphone, BaseProduct)
+        assert issubclass(Smartphone, LoggingMixin)
+
+    def test_lawn_grass_inheritance(self):
+        """Тест цепочки наследования LawnGrass"""
+        assert issubclass(LawnGrass, Product)
+        assert issubclass(LawnGrass, BaseProduct)
+        assert issubclass(LawnGrass, LoggingMixin)
+
+
+class TestAdditionalFeatures:
+    def test_order_creation(self):
+        """Тест создания заказа"""
+        product = Product("Test", "Desc", 100.0, 5)
+        order = Order()
+        order.add_item(product, 2)
+        assert len(order.items) == 1
+        assert order.total_cost() == 200.0
+
+    def test_order_string_representation(self):
+        """Тест строкового представления заказа"""
+        product = Product("Test", "Desc", 100.0, 5)
+        order = Order()
+        order.add_item(product, 3)
+        order_str = str(order)
+        assert "Заказ:" in order_str
+        assert "300.0 руб." in order_str
+
+    def test_category_inheritance(self):
+        """Тест что Category наследуется от BaseEntity"""
+        assert issubclass(Category, BaseEntity)
+
+    def test_category_total_cost(self):
+        """Тест расчета общей стоимости в категории"""
+        product1 = Product("P1", "D1", 100.0, 2)
+        product2 = Product("P2", "D2", 200.0, 3)
+        category = Category("Test", "Test", [product1, product2])
+        assert category.total_cost() == (100 * 2 + 200 * 3)
