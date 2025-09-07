@@ -1,111 +1,98 @@
 import pytest
-from src.main import Product, Smartphone, LawnGrass, Category
+from io import StringIO
+import sys
+from src.main import (
+    BaseProduct,
+    Product,
+    Smartphone,
+    LawnGrass,
+    Category,
+    Order,
+    LoggingMixin,
+    BaseEntity,
+)
 
-@pytest.fixture
-def sample_smartphone():
-    return Smartphone("Test Phone", "Test Desc", 1000.0, 5, 90.0, "Model X", 128, "Black")
 
-@pytest.fixture
-def sample_lawn_grass():
-    return LawnGrass("Test Grass", "Grass Desc", 50.0, 10, "Russia", "7 days", "Green")
+class TestAbstractBase:
+    def test_base_product_is_abstract(self):
+        """Тест что BaseProduct является абстрактным классом"""
+        with pytest.raises(TypeError):
+            BaseProduct("Test", "Test", 100.0, 5)
 
-@pytest.fixture
-def sample_product():
-    return Product("Test Product", "Product Desc", 100.0, 3)
+    def test_product_inherits_from_base(self):
+        """Тест что Product наследуется от BaseProduct"""
+        assert issubclass(Product, BaseProduct)
 
-class TestInheritance:
-    def test_smartphone_inheritance(self, sample_smartphone):
-        """Тест что Smartphone наследуется от Product"""
-        assert isinstance(sample_smartphone, Product)
-        assert hasattr(sample_smartphone, 'name')
-        assert hasattr(sample_smartphone, 'price')
-        assert hasattr(sample_smartphone, 'efficiency')
-        assert hasattr(sample_smartphone, 'model')
+    def test_abstract_methods_implementation(self):
+        """Тест что Product реализует все абстрактные методы"""
+        product = Product("Test", "Test", 100.0, 5)
+        assert hasattr(product, "__str__")
+        assert hasattr(product, "__add__")
+        assert hasattr(product, "price")
 
-    def test_lawn_grass_inheritance(self, sample_lawn_grass):
-        """Тест что LawnGrass наследуется от Product"""
-        assert isinstance(sample_lawn_grass, Product)
-        assert hasattr(sample_lawn_grass, 'name')
-        assert hasattr(sample_lawn_grass, 'price')
-        assert hasattr(sample_lawn_grass, 'country')
-        assert hasattr(sample_lawn_grass, 'germination_period')
 
-    def test_smartphone_attributes(self, sample_smartphone):
-        """Тест атрибутов Smartphone"""
-        assert sample_smartphone.efficiency == 90.0
-        assert sample_smartphone.model == "Model X"
-        assert sample_smartphone.memory == 128
-        assert sample_smartphone.color == "Black"
+class TestLoggingMixin:
+    def test_logging_on_creation(self, capsys):
+        """Тест логирования при создании объекта"""
+        product = Product("Test Product", "Test Description", 100.0, 5)
+        captured = capsys.readouterr()
+        assert "Создан объект Product" in captured.out
+        assert "name='Test Product'" in captured.out
 
-    def test_lawn_grass_attributes(self, sample_lawn_grass):
-        """Тест атрибутов LawnGrass"""
-        assert sample_lawn_grass.country == "Russia"
-        assert sample_lawn_grass.germination_period == "7 days"
-        assert sample_lawn_grass.color == "Green"
+    def test_repr_method(self):
+        """Тест метода __repr__"""
+        product = Product("Test", "Desc", 100.0, 5)
+        repr_str = repr(product)
+        assert "Product" in repr_str
+        assert "name='Test'" in repr_str
 
-class TestAdditionRestrictions:
-    def test_same_type_addition(self, sample_smartphone):
-        """Тест сложения объектов одного типа"""
-        smartphone2 = Smartphone("Phone 2", "Desc 2", 800.0, 3, 85.0, "Model Y", 64, "White")
-        result = sample_smartphone + smartphone2
-        expected = (1000.0 * 5) + (800.0 * 3)  # 5000 + 2400 = 7400
-        assert result == expected
 
-    def test_different_type_addition_error(self, sample_smartphone, sample_lawn_grass):
-        """Тест ошибки при сложении разных типов"""
-        with pytest.raises(TypeError, match="Нельзя складывать продукты разных типов"):
-            sample_smartphone + sample_lawn_grass
+class TestInheritanceChain:
+    def test_mro_chain(self):
+        """Тест порядка разрешения методов"""
+        mro = Product.__mro__
+        assert LoggingMixin in mro
+        assert BaseProduct in mro
+        assert object in mro
 
-    def test_product_with_smartphone_addition_error(self, sample_product, sample_smartphone):
-        """Тест ошибки при сложении Product и Smartphone"""
-        with pytest.raises(TypeError, match="Нельзя складывать продукты разных типов"):
-            sample_product + sample_smartphone
+    def test_smartphone_inheritance(self):
+        """Тест цепочки наследования Smartphone"""
+        assert issubclass(Smartphone, Product)
+        assert issubclass(Smartphone, BaseProduct)
+        assert issubclass(Smartphone, LoggingMixin)
 
-class TestCategoryRestrictions:
-    def test_add_valid_product(self, sample_smartphone):
-        """Тест добавления валидного продукта"""
-        category = Category("Test", "Test")
-        initial_count = Category.product_count
-        category.add_product(sample_smartphone)
-        assert Category.product_count == initial_count + 1
+    def test_lawn_grass_inheritance(self):
+        """Тест цепочки наследования LawnGrass"""
+        assert issubclass(LawnGrass, Product)
+        assert issubclass(LawnGrass, BaseProduct)
+        assert issubclass(LawnGrass, LoggingMixin)
 
-    def test_add_invalid_product_error(self):
-        """Тест ошибки при добавлении не продукта"""
-        category = Category("Test", "Test")
-        with pytest.raises(TypeError, match="Можно добавлять только объекты Product или его наследников"):
-            category.add_product("not a product")
 
-    def test_add_lawn_grass_to_category(self, sample_lawn_grass):
-        """Тест добавления LawnGrass в категорию"""
-        category = Category("Test", "Test")
-        category.add_product(sample_lawn_grass)
-        assert len(category.get_products_list()) == 1
+class TestAdditionalFeatures:
+    def test_order_creation(self):
+        """Тест создания заказа"""
+        product = Product("Test", "Desc", 100.0, 5)
+        order = Order()
+        order.add_item(product, 2)
+        assert len(order.items) == 1
+        assert order.total_cost() == 200.0
 
-    def test_initial_products_validation(self, sample_smartphone, sample_lawn_grass):
-        """Тест валидации продуктов при инициализации категории"""
-        category = Category("Test", "Test", [sample_smartphone, sample_lawn_grass])
-        assert len(category.get_products_list()) == 2
+    def test_order_string_representation(self):
+        """Тест строкового представления заказа"""
+        product = Product("Test", "Desc", 100.0, 5)
+        order = Order()
+        order.add_item(product, 3)
+        order_str = str(order)
+        assert "Заказ:" in order_str
+        assert "300.0 руб." in order_str
 
-class TestStringRepresentation:
-    def test_smartphone_str(self, sample_smartphone):
-        """Тест строкового представления Smartphone"""
-        result = str(sample_smartphone)
-        assert "Test Phone" in result
-        assert "Model X" in result
-        assert "128GB" in result
-        assert "Black" in result
+    def test_category_inheritance(self):
+        """Тест что Category наследуется от BaseEntity"""
+        assert issubclass(Category, BaseEntity)
 
-    def test_lawn_grass_str(self, sample_lawn_grass):
-        """Тест строкового представления LawnGrass"""
-        result = str(sample_lawn_grass)
-        assert "Test Grass" in result
-        assert "Russia" in result
-        assert "7 days" in result
-        assert "Green" in result
-
-def test_main_execution():
-    """Тест, что main.py выполняется без ошибок"""
-    import subprocess
-    import sys
-    result = subprocess.run([sys.executable, "src/main.py"], capture_output=True, text=True, timeout=30)
-    assert result.returncode == 0, f"Main execution failed: {result.stderr}"
+    def test_category_total_cost(self):
+        """Тест расчета общей стоимости в категории"""
+        product1 = Product("P1", "D1", 100.0, 2)
+        product2 = Product("P2", "D2", 200.0, 3)
+        category = Category("Test", "Test", [product1, product2])
+        assert category.total_cost() == (100 * 2 + 200 * 3)

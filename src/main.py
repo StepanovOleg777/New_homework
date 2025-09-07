@@ -1,14 +1,61 @@
-class Product:
-    name: str
-    description: str
-    __price: float
-    quantity: int
+from abc import ABC, abstractmethod
+
+
+class LoggingMixin:
+    """Миксин для логирования создания объектов"""
+
+    def __init__(self, *args, **kwargs):
+        # Не вызываем super() здесь, чтобы избежать конфликта с абстрактным классом
+        class_name = self.__class__.__name__
+        print(f"Создан объект {class_name} с параметрами: {self.__repr__()}")
+
+    def __repr__(self):
+        """Базовое представление объекта"""
+        if hasattr(self, "name"):
+            return f"{self.__class__.__name__}(name={repr(self.name)})"
+        return f"{self.__class__.__name__}()"
+
+
+class BaseProduct(ABC):
+    """Абстрактный базовый класс для продуктов"""
+
+    @abstractmethod
+    def __init__(self, name, description, price, quantity):
+        pass
+
+    @abstractmethod
+    def __str__(self):
+        """Абстрактный метод для строкового представления"""
+        pass
+
+    @abstractmethod
+    def __add__(self, other):
+        """Абстрактный метод для сложения продуктов"""
+        pass
+
+    @property
+    @abstractmethod
+    def price(self):
+        """Абстрактный геттер для цены"""
+        pass
+
+    @price.setter
+    @abstractmethod
+    def price(self, value):
+        """Абстрактный сеттер для цены"""
+        pass
+
+
+class Product(LoggingMixin, BaseProduct):
+    """Класс продукта с наследованием от миксина и абстрактного класса"""
 
     def __init__(self, name, description, price, quantity):
         self.name = name
         self.description = description
-        self.__price = price
+        self._price = price
         self.quantity = quantity
+        # Вызываем миксин после инициализации атрибутов
+        LoggingMixin.__init__(self)
 
     def __str__(self):
         """Строковое представление продукта"""
@@ -25,30 +72,10 @@ class Product:
 
         return (self.price * self.quantity) + (other.price * other.quantity)
 
-    @classmethod
-    def new_product(cls, product_data, existing_products=None):
-        """Класс-метод для создания нового продукта с проверкой дубликатов"""
-        if existing_products:
-            for existing_product in existing_products:
-                if existing_product.name == product_data['name']:
-                    # Объединяем количества
-                    existing_product.quantity += product_data['quantity']
-                    # Выбираем максимальную цену
-                    if product_data['price'] > existing_product.price:
-                        existing_product.price = product_data['price']
-                    return existing_product
-
-        return cls(
-            name=product_data['name'],
-            description=product_data['description'],
-            price=product_data['price'],
-            quantity=product_data['quantity']
-        )
-
     @property
     def price(self):
         """Геттер для цены"""
-        return self.__price
+        return self._price
 
     @price.setter
     def price(self, new_price):
@@ -58,59 +85,106 @@ class Product:
             return
 
         # Дополнительная логика для понижения цены
-        if new_price < self.__price:
+        if new_price < self._price:
             confirmation = input("Цена понижается. Подтвердите действие (y/n): ")
-            if confirmation.lower() != 'y':
+            if confirmation.lower() != "y":
                 print("Изменение цены отменено")
                 return
 
-        self.__price = new_price
+        self._price = new_price
+
+    def __repr__(self):
+        """Представление для отладки"""
+        return f"Product(name={repr(self.name)}, description={repr(self.description)}, price={self.price}, quantity={self.quantity})"
 
 
 class Smartphone(Product):
     """Класс для смартфонов"""
 
-    def __init__(self, name, description, price, quantity, efficiency, model, memory, color):
-        super().__init__(name, description, price, quantity)
-        self.efficiency = efficiency  # производительность
-        self.model = model  # модель
-        self.memory = memory  # объем встроенной памяти
-        self.color = color  # цвет
+    def __init__(
+        self, name, description, price, quantity, efficiency, model, memory, color
+    ):
+        self.efficiency = efficiency
+        self.model = model
+        self.memory = memory
+        self.color = color
+        # Вызываем конструктор родителя
+        super(Product, self).__init__(name, description, price, quantity)
 
     def __str__(self):
         """Строковое представление смартфона"""
-        return (f"{self.name} ({self.model}), {self.price} руб. Остаток: {self.quantity} шт.\n"
-                f"Производительность: {self.efficiency}, Память: {self.memory}GB, Цвет: {self.color}")
+        return (
+            f"{self.name} ({self.model}), {self.price} руб. Остаток: {self.quantity} шт.\n"
+            f"Производительность: {self.efficiency}, Память: {self.memory}GB, Цвет: {self.color}"
+        )
+
+    def __repr__(self):
+        """Представление для отладки"""
+        return (
+            f"Smartphone(name={repr(self.name)}, description={repr(self.description)}, "
+            f"price={self.price}, quantity={self.quantity}, efficiency={self.efficiency}, "
+            f"model={repr(self.model)}, memory={self.memory}, color={repr(self.color)})"
+        )
 
 
 class LawnGrass(Product):
     """Класс для газонной травы"""
 
-    def __init__(self, name, description, price, quantity, country, germination_period, color):
-        super().__init__(name, description, price, quantity)
-        self.country = country  # страна-производитель
-        self.germination_period = germination_period  # срок прорастания
-        self.color = color  # цвет
+    def __init__(
+        self, name, description, price, quantity, country, germination_period, color
+    ):
+        self.country = country
+        self.germination_period = germination_period
+        self.color = color
+        # Вызываем конструктор родителя
+        super(Product, self).__init__(name, description, price, quantity)
 
     def __str__(self):
         """Строковое представление газонной травы"""
-        return (f"{self.name}, {self.price} руб. Остаток: {self.quantity} шт.\n"
-                f"Страна: {self.country}, Прорастание: {self.germination_period}, Цвет: {self.color}")
+        return (
+            f"{self.name}, {self.price} руб. Остаток: {self.quantity} шт.\n"
+            f"Страна: {self.country}, Прорастание: {self.germination_period}, Цвет: {self.color}"
+        )
+
+    def __repr__(self):
+        """Представление для отладки"""
+        return (
+            f"LawnGrass(name={repr(self.name)}, description={repr(self.description)}, "
+            f"price={self.price}, quantity={self.quantity}, country={repr(self.country)}, "
+            f"germination_period={repr(self.germination_period)}, color={repr(self.color)})"
+        )
 
 
-class Category:
-    name: str
-    description: str
-    __products: list
+class BaseEntity(ABC):
+    """Абстрактный базовый класс для сущностей с товарами"""
+
+    @abstractmethod
+    def __init__(self):
+        self.items = []
+
+    @abstractmethod
+    def add_item(self, product, quantity):
+        """Абстрактный метод для добавления товара"""
+        pass
+
+    @abstractmethod
+    def total_cost(self):
+        """Абстрактный метод для расчета общей стоимости"""
+        pass
+
+
+class Category(BaseEntity):
+    """Класс категории товаров"""
+
     category_count: int = 0
     product_count: int = 0
 
     def __init__(self, name, description, products=None):
+        super().__init__()
         self.name = name
         self.description = description
-        self.__products = []
+        self.__products = []  # Приватный список продуктов
 
-        # Добавляем продукты через метод для проверки
         if products:
             for product in products:
                 self.add_product(product)
@@ -120,10 +194,23 @@ class Category:
     def add_product(self, product):
         """Добавляет продукт в категорию с проверкой типа"""
         if not isinstance(product, Product):
-            raise TypeError("Можно добавлять только объекты Product или его наследников")
+            raise TypeError(
+                "Можно добавлять только объекты Product или его наследников"
+            )
 
         self.__products.append(product)
         Category.product_count += 1
+
+    def add_item(self, product, quantity=1):
+        """Реализация абстрактного метода"""
+        if not isinstance(product, Product):
+            raise TypeError("Можно добавлять только объекты Product")
+        product.quantity = quantity
+        self.add_product(product)
+
+    def total_cost(self):
+        """Рассчитывает общую стоимость всех товаров в категории"""
+        return sum(product.price * product.quantity for product in self.__products)
 
     def __str__(self):
         """Строковое представление категории"""
@@ -143,118 +230,94 @@ class Category:
         return self.__products
 
 
-class CategoryIterator:
-    """Итератор для перебора продуктов в категории"""
+class Order(BaseEntity):
+    """Класс заказа"""
 
-    def __init__(self, category):
-        self.category = category
-        self.index = 0
+    def __init__(self):
+        super().__init__()
+        self.items = []  # список кортежей (product, quantity)
 
-    def __iter__(self):
-        return self
+    def add_item(self, product, quantity):
+        """Добавляет товар в заказ"""
+        if not isinstance(product, Product):
+            raise TypeError("Можно добавлять только объекты Product")
+        if quantity <= 0:
+            raise ValueError("Количество должно быть положительным")
 
-    def __next__(self):
-        if self.index < len(self.category.get_products_list()):
-            product = self.category.get_products_list()[self.index]
-            self.index += 1
-            return product
-        raise StopIteration
+        self.items.append((product, quantity))
+
+    def total_cost(self):
+        """Рассчитывает общую стоимость заказа"""
+        return sum(product.price * quantity for product, quantity in self.items)
+
+    def __str__(self):
+        """Строковое представление заказа"""
+        if not self.items:
+            return "Заказ пуст"
+
+        result = "Заказ:\n"
+        for product, quantity in self.items:
+            result += f"  - {product.name}: {quantity} шт. × {product.price} руб. = {product.price * quantity} руб.\n"
+        result += f"Итого: {self.total_cost()} руб."
+        return result
 
 
-if __name__ == '__main__':
-    smartphone1 = Smartphone("Samsung Galaxy S23 Ultra", "256GB, Серый цвет, 200MP камера", 180000.0, 5, 95.5,
-                             "S23 Ultra", 256, "Серый")
-    smartphone2 = Smartphone("Iphone 15", "512GB, Gray space", 210000.0, 8, 98.2, "15", 512, "Gray space")
-    smartphone3 = Smartphone("Xiaomi Redmi Note 11", "1024GB, Синий", 31000.0, 14, 90.3, "Note 11", 1024, "Синий")
+if __name__ == "__main__":
+    print("=== Создание продуктов с логированием ===")
+    product1 = Product(
+        "Samsung Galaxy S23 Ultra", "256GB, Серый цвет, 200MP камера", 180000.0, 5
+    )
+    product2 = Product("Iphone 15", "512GB, Gray space", 210000.0, 8)
+    product3 = Product("Xiaomi Redmi Note 11", "1024GB, Синий", 31000.0, 14)
 
-    print("=== Информация о смартфонах ===")
-    print(smartphone1.name)
-    print(smartphone1.description)
-    print(smartphone1.price)
-    print(smartphone1.quantity)
-    print(smartphone1.efficiency)
-    print(smartphone1.model)
-    print(smartphone1.memory)
-    print(smartphone1.color)
-    print()
+    print("\n=== Информация о продуктах ===")
+    print(product1.name)
+    print(product1.description)
+    print(product1.price)
+    print(product1.quantity)
 
-    print(smartphone2.name)
-    print(smartphone2.description)
-    print(smartphone2.price)
-    print(smartphone2.quantity)
-    print(smartphone2.efficiency)
-    print(smartphone2.model)
-    print(smartphone2.memory)
-    print(smartphone2.color)
-    print()
+    print(product2.name)
+    print(product2.description)
+    print(product2.price)
+    print(product2.quantity)
 
-    print(smartphone3.name)
-    print(smartphone3.description)
-    print(smartphone3.price)
-    print(smartphone3.quantity)
-    print(smartphone3.efficiency)
-    print(smartphone3.model)
-    print(smartphone3.memory)
-    print(smartphone3.color)
-    print()
+    print(product3.name)
+    print(product3.description)
+    print(product3.price)
+    print(product3.quantity)
 
-    grass1 = LawnGrass("Газонная трава", "Элитная трава для газона", 500.0, 20, "Россия", "7 дней", "Зеленый")
-    grass2 = LawnGrass("Газонная трава 2", "Выносливая трава", 450.0, 15, "США", "5 дней", "Темно-зеленый")
+    print("\n=== Создание категории ===")
+    category1 = Category(
+        "Смартфоны",
+        "Смартфоны, как средство не только коммуникации, но и получения дополнительных функций для удобства жизни",
+        [product1, product2, product3],
+    )
 
-    print("=== Информация о газонной траве ===")
-    print(grass1.name)
-    print(grass1.description)
-    print(grass1.price)
-    print(grass1.quantity)
-    print(grass1.country)
-    print(grass1.germination_period)
-    print(grass1.color)
-    print()
+    print(category1.name == "Смартфоны")
+    print(category1.description)
+    print(len(category1.get_products_list()))
+    print(Category.category_count)
+    print(Category.product_count)
 
-    print(grass2.name)
-    print(grass2.description)
-    print(grass2.price)
-    print(grass2.quantity)
-    print(grass2.country)
-    print(grass2.germination_period)
-    print(grass2.color)
-    print()
+    print("\n=== Создание дополнительного продукта и категории ===")
+    product4 = Product('55" QLED 4K', "Фоновая подсветка", 123000.0, 7)
+    category2 = Category(
+        "Телевизоры",
+        "Современный телевизор, который позволяет наслаждаться просмотром, станет вашим другом и помощником",
+        [product4],
+    )
 
-    print("=== Тестирование сложения ===")
-    smartphone_sum = smartphone1 + smartphone2
-    print(f"Сумма смартфонов: {smartphone_sum} руб.")
+    print(category2.name)
+    print(category2.description)
+    print(len(category2.get_products_list()))
+    print(category2.products)
 
-    grass_sum = grass1 + grass2
-    print(f"Сумма газонной травы: {grass_sum} руб.")
+    print("\n=== Статистика ===")
+    print(f"Всего категорий: {Category.category_count}")
+    print(f"Всего продуктов: {Category.product_count}")
 
-    try:
-        invalid_sum = smartphone1 + grass1
-    except TypeError as e:
-        print(f"Возникла ошибка TypeError при попытке сложения: {e}")
-    else:
-        print("Не возникла ошибка TypeError при попытке сложения")
-
-    category_smartphones = Category("Смартфоны", "Высокотехнологичные смартфоны", [smartphone1, smartphone2])
-    category_grass = Category("Газонная трава", "Различные виды газонной травы", [grass1, grass2])
-
-    category_smartphones.add_product(smartphone3)
-
-    print("\n=== Продукты в категории Смартфоны ===")
-    print(category_smartphones.products)
-
-    print(f"Общее количество продуктов: {Category.product_count}")
-
-    try:
-        category_smartphones.add_product("Not a product")
-    except TypeError as e:
-        print(f"Возникла ошибка TypeError при добавлении не продукта: {e}")
-    else:
-        print("Не возникла ошибка TypeError при добавлении не продукта")
-
-    print("\n=== Строковое представление ===")
-    print(smartphone1)
-    print()
-    print(grass1)
-    print()
-    print(category_smartphones)
-    print(category_grass)
+    print("\n=== Дополнительное: создание заказа ===")
+    order = Order()
+    order.add_item(product1, 2)
+    order.add_item(product2, 1)
+    print(order)
