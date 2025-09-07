@@ -1,6 +1,12 @@
 from abc import ABC, abstractmethod
 
 
+class ZeroQuantityError(Exception):
+    """Пользовательское исключение для товаров с нулевым количеством"""
+
+    pass
+
+
 class LoggingMixin:
     """Миксин для логирования создания объектов"""
 
@@ -50,6 +56,12 @@ class Product(LoggingMixin, BaseProduct):
     """Класс продукта с наследованием от миксина и абстрактного класса"""
 
     def __init__(self, name, description, price, quantity):
+        # Проверка на нулевое количество
+        if quantity == 0:
+            raise ZeroQuantityError(
+                "Товар с нулевым количеством не может быть добавлен"
+            )
+
         self.name = name
         self.description = description
         self._price = price
@@ -187,9 +199,24 @@ class Category(BaseEntity):
 
         if products:
             for product in products:
-                self.add_product(product)
+                self.add_product_with_check(product)
 
         Category.category_count += 1
+
+    def add_product_with_check(self, product):
+        """Добавляет продукт с проверкой на нулевое количество"""
+        try:
+            if product.quantity == 0:
+                raise ZeroQuantityError("Нельзя добавить товар с нулевым количеством")
+
+            self.__products.append(product)
+            Category.product_count += 1
+            print(f"Товар '{product.name}' успешно добавлен")
+
+        except ZeroQuantityError as e:
+            print(f"Ошибка при добавлении товара: {e}")
+        finally:
+            print("Обработка добавления товара завершена")
 
     def add_product(self, product):
         """Добавляет продукт в категорию с проверкой типа"""
@@ -206,7 +233,18 @@ class Category(BaseEntity):
         if not isinstance(product, Product):
             raise TypeError("Можно добавлять только объекты Product")
         product.quantity = quantity
-        self.add_product(product)
+        self.add_product_with_check(product)
+
+    def middle_price(self):
+        """Подсчитывает средний ценник всех товаров в категории"""
+        try:
+            total_price = sum(product.price for product in self.__products)
+            count = len(self.__products)
+            if count == 0:
+                return 0
+            return total_price / count
+        except ZeroDivisionError:
+            return 0
 
     def total_cost(self):
         """Рассчитывает общую стоимость всех товаров в категории"""
@@ -237,6 +275,23 @@ class Order(BaseEntity):
         super().__init__()
         self.items = []  # список кортежей (product, quantity)
 
+    def add_item_with_check(self, product, quantity):
+        """Добавляет товар в заказ с проверкой на нулевое количество"""
+        try:
+            if quantity == 0:
+                raise ZeroQuantityError("Нельзя добавить товар с нулевым количеством")
+
+            if not isinstance(product, Product):
+                raise TypeError("Можно добавлять только объекты Product")
+
+            self.items.append((product, quantity))
+            print(f"Товар '{product.name}' успешно добавлен в заказ")
+
+        except (ZeroQuantityError, TypeError) as e:
+            print(f"Ошибка при добавлении товара в заказ: {e}")
+        finally:
+            print("Обработка добавления товара в заказ завершена")
+
     def add_item(self, product, quantity):
         """Добавляет товар в заказ"""
         if not isinstance(product, Product):
@@ -263,61 +318,43 @@ class Order(BaseEntity):
 
 
 if __name__ == "__main__":
-    print("=== Создание продуктов с логированием ===")
+    print("=== Тестирование исключений при создании продукта ===")
+    try:
+        product_invalid = Product("Бракованный товар", "Неверное количество", 1000.0, 0)
+    except ZeroQuantityError as e:
+        print(f"Возникла ошибка ZeroQuantityError: {e}")
+    except ValueError as e:
+        print(f"Возникла ошибка ValueError: {e}")
+    else:
+        print("Не возникла ошибка при попытке добавить продукт с нулевым количеством")
+
+    print("\n=== Создание валидных продуктов ===")
     product1 = Product(
         "Samsung Galaxy S23 Ultra", "256GB, Серый цвет, 200MP камера", 180000.0, 5
     )
     product2 = Product("Iphone 15", "512GB, Gray space", 210000.0, 8)
     product3 = Product("Xiaomi Redmi Note 11", "1024GB, Синий", 31000.0, 14)
 
-    print("\n=== Информация о продуктах ===")
-    print(product1.name)
-    print(product1.description)
-    print(product1.price)
-    print(product1.quantity)
-
-    print(product2.name)
-    print(product2.description)
-    print(product2.price)
-    print(product2.quantity)
-
-    print(product3.name)
-    print(product3.description)
-    print(product3.price)
-    print(product3.quantity)
-
-    print("\n=== Создание категории ===")
+    print("\n=== Тестирование среднего ценника ===")
     category1 = Category(
-        "Смартфоны",
-        "Смартфоны, как средство не только коммуникации, но и получения дополнительных функций для удобства жизни",
-        [product1, product2, product3],
+        "Смартфоны", "Категория смартфонов", [product1, product2, product3]
+    )
+    print(
+        f"Средний ценник в категории '{category1.name}': {category1.middle_price()} руб."
     )
 
-    print(category1.name == "Смартфоны")
-    print(category1.description)
-    print(len(category1.get_products_list()))
-    print(Category.category_count)
-    print(Category.product_count)
+    category_empty = Category("Пустая категория", "Категория без продуктов", [])
+    print(f"Средний ценник в пустой категории: {category_empty.middle_price()} руб.")
 
-    print("\n=== Создание дополнительного продукта и категории ===")
-    product4 = Product('55" QLED 4K', "Фоновая подсветка", 123000.0, 7)
-    category2 = Category(
-        "Телевизоры",
-        "Современный телевизор, который позволяет наслаждаться просмотром, станет вашим другом и помощником",
-        [product4],
-    )
+    print("\n=== Тестирование добавления с проверкой ===")
+    product_zero = Product(
+        "Тестовый товар", "Тест", 100.0, 1
+    )  # Сначала создаем с количеством 1
+    product_zero.quantity = 0  # Затем меняем на 0 для теста
+    category1.add_product_with_check(product_zero)
 
-    print(category2.name)
-    print(category2.description)
-    print(len(category2.get_products_list()))
-    print(category2.products)
-
-    print("\n=== Статистика ===")
-    print(f"Всего категорий: {Category.category_count}")
-    print(f"Всего продуктов: {Category.product_count}")
-
-    print("\n=== Дополнительное: создание заказа ===")
+    print("\n=== Тестирование заказа ===")
     order = Order()
-    order.add_item(product1, 2)
-    order.add_item(product2, 1)
+    order.add_item_with_check(product1, 2)
+    order.add_item_with_check(product1, 0)  # Попытка добавить с нулевым количеством
     print(order)
