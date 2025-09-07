@@ -19,6 +19,10 @@ class Product:
         if not isinstance(other, Product):
             raise TypeError("Можно складывать только объекты Product")
 
+        # Проверка, что объекты одного типа
+        if type(self) != type(other):
+            raise TypeError("Нельзя складывать продукты разных типов")
+
         return (self.price * self.quantity) + (other.price * other.quantity)
 
     @classmethod
@@ -26,19 +30,19 @@ class Product:
         """Класс-метод для создания нового продукта с проверкой дубликатов"""
         if existing_products:
             for existing_product in existing_products:
-                if existing_product.name == product_data["name"]:
+                if existing_product.name == product_data['name']:
                     # Объединяем количества
-                    existing_product.quantity += product_data["quantity"]
+                    existing_product.quantity += product_data['quantity']
                     # Выбираем максимальную цену
-                    if product_data["price"] > existing_product.price:
-                        existing_product.price = product_data["price"]
+                    if product_data['price'] > existing_product.price:
+                        existing_product.price = product_data['price']
                     return existing_product
 
         return cls(
-            name=product_data["name"],
-            description=product_data["description"],
-            price=product_data["price"],
-            quantity=product_data["quantity"],
+            name=product_data['name'],
+            description=product_data['description'],
+            price=product_data['price'],
+            quantity=product_data['quantity']
         )
 
     @property
@@ -56,11 +60,42 @@ class Product:
         # Дополнительная логика для понижения цены
         if new_price < self.__price:
             confirmation = input("Цена понижается. Подтвердите действие (y/n): ")
-            if confirmation.lower() != "y":
+            if confirmation.lower() != 'y':
                 print("Изменение цены отменено")
                 return
 
         self.__price = new_price
+
+
+class Smartphone(Product):
+    """Класс для смартфонов"""
+
+    def __init__(self, name, description, price, quantity, efficiency, model, memory, color):
+        super().__init__(name, description, price, quantity)
+        self.efficiency = efficiency  # производительность
+        self.model = model  # модель
+        self.memory = memory  # объем встроенной памяти
+        self.color = color  # цвет
+
+    def __str__(self):
+        """Строковое представление смартфона"""
+        return (f"{self.name} ({self.model}), {self.price} руб. Остаток: {self.quantity} шт.\n"
+                f"Производительность: {self.efficiency}, Память: {self.memory}GB, Цвет: {self.color}")
+
+
+class LawnGrass(Product):
+    """Класс для газонной травы"""
+
+    def __init__(self, name, description, price, quantity, country, germination_period, color):
+        super().__init__(name, description, price, quantity)
+        self.country = country  # страна-производитель
+        self.germination_period = germination_period  # срок прорастания
+        self.color = color  # цвет
+
+    def __str__(self):
+        """Строковое представление газонной травы"""
+        return (f"{self.name}, {self.price} руб. Остаток: {self.quantity} шт.\n"
+                f"Страна: {self.country}, Прорастание: {self.germination_period}, Цвет: {self.color}")
 
 
 class Category:
@@ -73,20 +108,27 @@ class Category:
     def __init__(self, name, description, products=None):
         self.name = name
         self.description = description
-        self.__products = products if products else []
+        self.__products = []
+
+        # Добавляем продукты через метод для проверки
+        if products:
+            for product in products:
+                self.add_product(product)
 
         Category.category_count += 1
-        Category.product_count += len(self.__products)
+
+    def add_product(self, product):
+        """Добавляет продукт в категорию с проверкой типа"""
+        if not isinstance(product, Product):
+            raise TypeError("Можно добавлять только объекты Product или его наследников")
+
+        self.__products.append(product)
+        Category.product_count += 1
 
     def __str__(self):
         """Строковое представление категории"""
         total_quantity = sum(product.quantity for product in self.__products)
         return f"{self.name}, количество продуктов: {total_quantity} шт."
-
-    def add_product(self, product):
-        """Добавляет продукт в категорию"""
-        self.__products.append(product)
-        Category.product_count += 1
 
     @property
     def products(self):
@@ -97,7 +139,7 @@ class Category:
         return result
 
     def get_products_list(self):
-        """Метод для получения списка продуктов (для внутреннего использования)"""
+        """Метод для получения списка продуктов"""
         return self.__products
 
 
@@ -119,60 +161,100 @@ class CategoryIterator:
         raise StopIteration
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
+    smartphone1 = Smartphone("Samsung Galaxy S23 Ultra", "256GB, Серый цвет, 200MP камера", 180000.0, 5, 95.5,
+                             "S23 Ultra", 256, "Серый")
+    smartphone2 = Smartphone("Iphone 15", "512GB, Gray space", 210000.0, 8, 98.2, "15", 512, "Gray space")
+    smartphone3 = Smartphone("Xiaomi Redmi Note 11", "1024GB, Синий", 31000.0, 14, 90.3, "Note 11", 1024, "Синий")
 
-    product1 = Product(
-        "Samsung Galaxy S23 Ultra", "256GB, Серый цвет, 200MP камера", 180000.0, 5
-    )
-    product2 = Product("Iphone 15", "512GB, Gray space", 210000.0, 8)
-    product3 = Product("Xiaomi Redmi Note 11", "1024GB, Синий", 31000.0, 14)
-
-    print("=== Строковое представление продуктов ===")
-    print(str(product1))
-    print(str(product2))
-    print(str(product3))
+    print("=== Информация о смартфонах ===")
+    print(smartphone1.name)
+    print(smartphone1.description)
+    print(smartphone1.price)
+    print(smartphone1.quantity)
+    print(smartphone1.efficiency)
+    print(smartphone1.model)
+    print(smartphone1.memory)
+    print(smartphone1.color)
     print()
 
-    category1 = Category(
-        "Смартфоны",
-        "Смартфоны, как средство не только коммуникации, но и получения дополнительных функций для удобства жизни",
-        [product1, product2, product3],
-    )
-
-    print("=== Строковое представление категории ===")
-    print(str(category1))
+    print(smartphone2.name)
+    print(smartphone2.description)
+    print(smartphone2.price)
+    print(smartphone2.quantity)
+    print(smartphone2.efficiency)
+    print(smartphone2.model)
+    print(smartphone2.memory)
+    print(smartphone2.color)
     print()
 
-    print("=== Список продуктов через геттер ===")
-    print(category1.products)
-
-    print("=== Сложение продуктов ===")
-    print(f"Product1 + Product2 = {product1 + product2} руб.")
-    print(f"Product1 + Product3 = {product1 + product3} руб.")
-    print(f"Product2 + Product3 = {product2 + product3} руб.")
+    print(smartphone3.name)
+    print(smartphone3.description)
+    print(smartphone3.price)
+    print(smartphone3.quantity)
+    print(smartphone3.efficiency)
+    print(smartphone3.model)
+    print(smartphone3.memory)
+    print(smartphone3.color)
     print()
 
-    print("=== Итерация по продуктам категории ===")
-    for product in CategoryIterator(category1):
-        print(f"  - {product}")
+    grass1 = LawnGrass("Газонная трава", "Элитная трава для газона", 500.0, 20, "Россия", "7 дней", "Зеленый")
+    grass2 = LawnGrass("Газонная трава 2", "Выносливая трава", 450.0, 15, "США", "5 дней", "Темно-зеленый")
 
-    print("\n=== Тест обработки дубликатов ===")
-    existing_products = [product1, product2, product3]
+    print("=== Информация о газонной траве ===")
+    print(grass1.name)
+    print(grass1.description)
+    print(grass1.price)
+    print(grass1.quantity)
+    print(grass1.country)
+    print(grass1.germination_period)
+    print(grass1.color)
+    print()
 
-    duplicate_data = {
-        "name": "Samsung Galaxy S23 Ultra",
-        "description": "Новая версия",
-        "price": 185000.0,
-        "quantity": 3,
-    }
+    print(grass2.name)
+    print(grass2.description)
+    print(grass2.price)
+    print(grass2.quantity)
+    print(grass2.country)
+    print(grass2.germination_period)
+    print(grass2.color)
+    print()
 
-    new_product = Product.new_product(duplicate_data, existing_products)
-    print(
-        f"После объединения: {product1.name}, количество: {product1.quantity}, цена: {product1.price} руб."
-    )
+    print("=== Тестирование сложения ===")
+    smartphone_sum = smartphone1 + smartphone2
+    print(f"Сумма смартфонов: {smartphone_sum} руб.")
 
-    print("\n=== Тест валидации цены ===")
-    print(f"Текущая цена product1: {product1.price} руб.")
-    product1.price = -100
-    product1.price = 190000.0
-    print(f"Новая цена product1: {product1.price} руб.")
+    grass_sum = grass1 + grass2
+    print(f"Сумма газонной травы: {grass_sum} руб.")
+
+    try:
+        invalid_sum = smartphone1 + grass1
+    except TypeError as e:
+        print(f"Возникла ошибка TypeError при попытке сложения: {e}")
+    else:
+        print("Не возникла ошибка TypeError при попытке сложения")
+
+    category_smartphones = Category("Смартфоны", "Высокотехнологичные смартфоны", [smartphone1, smartphone2])
+    category_grass = Category("Газонная трава", "Различные виды газонной травы", [grass1, grass2])
+
+    category_smartphones.add_product(smartphone3)
+
+    print("\n=== Продукты в категории Смартфоны ===")
+    print(category_smartphones.products)
+
+    print(f"Общее количество продуктов: {Category.product_count}")
+
+    try:
+        category_smartphones.add_product("Not a product")
+    except TypeError as e:
+        print(f"Возникла ошибка TypeError при добавлении не продукта: {e}")
+    else:
+        print("Не возникла ошибка TypeError при добавлении не продукта")
+
+    print("\n=== Строковое представление ===")
+    print(smartphone1)
+    print()
+    print(grass1)
+    print()
+    print(category_smartphones)
+    print(category_grass)
