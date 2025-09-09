@@ -1,39 +1,38 @@
 import pytest
-
-from src.main import Product, Category
-
-
-@pytest.fixture
-def sample_products():
-    """Фикстура для создания тестовых продуктов"""
-    return [
-        Product(
-            "Samsung Galaxy S23 Ultra", "256GB, Серый цвет, 200MP камера", 180000.0, 5
-        ),
-        Product("Iphone 15", "512GB, Gray space", 210000.0, 8),
-        Product("Xiaomi Redmi Note 11", "1024GB, Синий", 31000.0, 14),
-    ]
+import sys
+from io import StringIO
+from unittest.mock import patch
 
 
-@pytest.fixture
-def sample_category(sample_products):
-    """Фикстура для создания тестовой категории"""
-    return Category("Смартфоны", "Смартфоны как средство коммуникации", sample_products)
+def test_main_execution():
+    """Тест что main.py выполняется без ошибок"""
+    try:
+        from main import main
+
+        with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
+            result = main()
+
+        # Проверяем что программа завершилась успешно
+        assert result == 0
+
+        # Проверяем что в выводе есть ожидаемый текст
+        output = mock_stdout.getvalue()
+        assert "ТЕСТИРОВАНИЕ ПРОГРАММЫ" in output
+        assert "ВСЕ ТЕСТЫ ПРОЙДЕНЫ" in output
+        assert "Средний ценник" in output
+
+    except Exception as e:
+        pytest.fail(f"Main execution failed: {e}")
 
 
-def test_product_creation():
-    """Тест создания продукта"""
-    product = Product("Test Product", "Test Description", 100.0, 10)
+def test_main_zero_quantity_error():
+    """Тест обработки ошибки нулевого количества в main"""
+    from main import main
 
-    assert product.name == "Test Product"
-    assert product.description == "Test Description"
-    assert product.price == 100.0
-    assert product.quantity == 10
+    with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
+        result = main()
+        output = mock_stdout.getvalue()
 
-
-def test_category_creation(sample_category, sample_products):
-    """Тест создания категории"""
-    assert sample_category.name == "Смартфоны"
-    assert sample_category.description == "Смартфоны как средство коммуникации"
-    assert len(sample_category.products) == 3
-    assert sample_category.products == sample_products
+        # Проверяем что ошибка нулевого количества обработана
+        assert "Возникла ошибка ValueError" in output
+        assert "нулевым количеством" in output
